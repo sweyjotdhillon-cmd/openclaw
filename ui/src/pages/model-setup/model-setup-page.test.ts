@@ -100,7 +100,7 @@ describe("ModelSetupPage catalog icons", () => {
       },
     );
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }), {
+      new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
         status: 200,
         headers: { "content-type": "image/png" },
       }),
@@ -156,7 +156,7 @@ describe("ModelSetupPage catalog icons", () => {
       },
     );
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }), {
+      new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
         status: 200,
         headers: { "content-type": "image/png" },
       }),

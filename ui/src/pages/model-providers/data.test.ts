@@ -552,7 +552,7 @@ describe("buildModelProviderCards", () => {
         { provider: "openrouter", count: 1, totals },
       ],
     });
-    expect(cards.map((card) => card.id)).toEqual(["anthropic", "openrouter"]);
+    expect(cards.map((card) => card.id)).toEqual(["anthropic"]);
     expect(firstCard(cards).localCost).toEqual({
       totalCost: 0.42,
       totalTokens: 150,

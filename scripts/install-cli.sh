@@ -349,7 +349,20 @@ preflight_fresh_git_disk_space() {
   emit_json step name disk-space status ok
 }
 
+is_termux() {
+  if [[ -n "${PREFIX:-}" && "$PREFIX" == *"/com.termux/"* ]]; then
+    return 0
+  fi
+  if [[ -d "/data/data/com.termux" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 has_sudo() {
+  if is_termux; then
+    return 1
+  fi
   command -v sudo >/dev/null 2>&1
 }
 
@@ -365,6 +378,16 @@ ensure_git() {
 
   emit_json step name git status start
   log "Installing Git (required for npm installs)..."
+
+  if is_termux; then
+    if command -v pkg >/dev/null 2>&1; then
+      pkg install -y git
+    else
+      fail "Git missing and pkg unavailable in Termux. Install git and retry."
+    fi
+    emit_json step name git status ok
+    return
+  fi
 
   case "$(os_detect)" in
     linux)
@@ -1198,6 +1221,29 @@ install_node() {
     fail "Node ${NODE_VERSION} is unsupported; use ${SUPPORTED_NODE_VERSION_LABEL}."
   fi
   dir="$(node_dir)"
+
+  if is_termux; then
+    local system_node system_npm installed_version
+    system_node="$(command_path_without_node_prefix node || true)"
+    system_npm="$(command_path_without_node_prefix npm || true)"
+    emit_json step name node status start method system
+    if [[ -z "$system_node" || -z "$system_npm" ]]; then
+      if command -v pkg >/dev/null 2>&1; then
+        pkg install -y nodejs-lts
+        system_node="$(command_path_without_node_prefix node || true)"
+        system_npm="$(command_path_without_node_prefix npm || true)"
+      fi
+    fi
+    if ! linked_node_is_usable "$system_node" "$system_npm"; then
+      fail "Termux requires Node.js (nodejs-lts) and working npm. Install nodejs-lts with pkg install nodejs-lts and retry."
+    fi
+    system_node="$("$system_node" -p 'process.execPath')"
+    system_npm="$("$system_node" -p 'require("node:fs").realpathSync(process.argv[1])' "$system_npm")"
+    link_node_runtime_paths "$system_node" "$system_npm"
+    installed_version="$("$(node_bin)" -v)"
+    emit_json step name node status ok method system version "$installed_version"
+    return
+  fi
 
   if [[ "$os" == "freebsd" ]]; then
     if [[ "$NODE_ONLY" -eq 1 ]]; then

@@ -533,6 +533,76 @@ Notification forwarding requires the Android Notification Listener permission. T
 
 WhatsApp, WhatsApp Business, Telegram, Telegram X, Discord, and Signal notifications are always excluded. Their messages are already owned by native OpenClaw channel sessions; forwarding the Android notification as a separate node event could route a reply through the wrong conversation.
 
+## Hosting Gateway in Termux (Non-Rooted Android)
+
+You can host OpenClaw Gateway directly on an Android device using [Termux](https://termux.dev/) without requiring root privileges. This setup is optimized for resource-constrained mobile hardware (e.g., 4 GB RAM and 5–6 GB total storage).
+
+### 1. Installation in Termux
+
+Open Termux on your Android phone and run the standard installer:
+
+```bash
+pkg update && pkg install -y curl
+curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash
+```
+
+The installer automatically detects Termux, uses `pkg` for Node.js (`nodejs-lts`), Git, and build tools, and bypasses `sudo`.
+
+### 2. RAM and Storage Optimization (4 GB RAM / 5-6 GB Storage)
+
+To prevent Out-Of-Memory (OOM) kills on a 4 GB RAM device and save disk space on tight storage:
+
+- **Heap limit:** Constrain V8 old space memory to 1.5 GB by setting `NODE_OPTIONS`:
+
+  ```bash
+  export NODE_OPTIONS="--max-old-space-size=1536"
+  ```
+
+  Add this line to your `~/.bashrc` or `~/.zshrc`.
+
+- **Storage cleanup:** Periodically clean package caches and npm cache to conserve the 5–6 GB storage budget:
+
+  ```bash
+  pkg clean
+  npm cache clean --force
+  ```
+
+- **Run Gateway:** Launch the gateway process with memory bounds:
+
+  ```bash
+  NODE_OPTIONS="--max-old-space-size=1536" openclaw gateway run
+  ```
+
+### 3. Auto-Boot Setup with Termux:Boot ("Thomas")
+
+To automatically start the OpenClaw Gateway whenever your Android device reboots or powers on:
+
+1. Install **Termux:Boot** (available on F-Droid).
+2. Open the Termux:Boot app once to allow background execution permissions.
+3. In Termux, create the boot scripts directory:
+
+   ```bash
+   mkdir -p ~/.termux/boot
+   ```
+
+4. Create the startup script (e.g., `~/.termux/boot/start-openclaw.sh`):
+
+   ```bash
+   #!/data/data/com.termux/files/usr/bin/bash
+   termux-wake-lock
+   export NODE_OPTIONS="--max-old-space-size=1536"
+   export PATH="/data/data/com.termux/files/usr/bin:$PATH"
+   openclaw gateway run > ~/.openclaw/gateway-boot.log 2>&1 &
+   ```
+
+5. Make the boot script executable:
+
+   ```bash
+   chmod +x ~/.termux/boot/start-openclaw.sh
+   ```
+
+`termux-wake-lock` prevents Android from putting CPU to sleep while the Gateway is hosting background sessions.
+
 ## Related
 
 - [iOS app](/platforms/ios)

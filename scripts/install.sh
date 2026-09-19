@@ -444,6 +444,16 @@ print_installer_banner() {
     echo ""
 }
 
+is_termux() {
+    if [[ -n "${PREFIX:-}" && "$PREFIX" == *"/com.termux/"* ]]; then
+        return 0
+    fi
+    if [[ -d "/data/data/com.termux" ]]; then
+        return 0
+    fi
+    return 1
+}
+
 detect_os_or_die() {
     OS="unknown"
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -454,12 +464,16 @@ detect_os_or_die() {
 
     if [[ "$OS" == "unknown" ]]; then
         ui_error "Unsupported operating system"
-        echo "This installer supports macOS and Linux (including WSL)."
+        echo "This installer supports macOS and Linux (including WSL and Termux)."
         echo "For Windows, use: iwr -useb https://openclaw.ai/install.ps1 | iex"
         exit 1
     fi
 
-    ui_success "Detected: $OS"
+    if is_termux; then
+        ui_success "Detected: $OS (Termux / Android non-rooted)"
+    else
+        ui_success "Detected: $OS"
+    fi
 }
 
 ui_info() {
@@ -908,6 +922,12 @@ apt_get_install() {
 }
 
 install_build_tools_linux() {
+    if is_termux; then
+        ui_info "Installing build tools via pkg (Termux detected)"
+        run_quiet_step "Installing build tools" pkg install -y python make clang cmake
+        return
+    fi
+
     require_sudo
 
     # apt_get already escalates privileges itself, so it stays separate from the
@@ -2407,6 +2427,13 @@ install_node() {
         ui_success "Node.js installed"
         print_active_node_paths || true
     elif [[ "$OS" == "linux" ]]; then
+        if is_termux; then
+            ui_info "Installing Node.js via pkg (Termux detected)"
+            run_required_step "Installing Node.js" pkg install -y nodejs-lts
+            finish_linux_node_install
+            return 0
+        fi
+
         require_sudo
 
         ui_info "Installing Linux build tools (make/g++/cmake/python3)"
@@ -2503,7 +2530,7 @@ is_root() {
 }
 
 require_sudo() {
-    if [[ "$OS" != "linux" ]]; then
+    if [[ "$OS" != "linux" ]] || is_termux; then
         return 0
     fi
     if is_root; then
@@ -2526,6 +2553,12 @@ install_git() {
         install_homebrew
         run_quiet_step "Installing Git" brew install git
     elif [[ "$OS" == "linux" ]]; then
+        if is_termux; then
+            run_quiet_step "Installing Git" pkg install -y git
+            ui_success "Git installed"
+            return 0
+        fi
+
         require_sudo
         if command -v apk &> /dev/null && is_alpine_linux; then
             if is_root; then

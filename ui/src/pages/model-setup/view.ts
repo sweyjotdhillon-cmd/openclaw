@@ -16,6 +16,21 @@ import {
 } from "../model-providers/view-status.ts";
 import { renderCandidateRows } from "./candidate-models.ts";
 import {
+  renderLocalLmDashboard,
+  LOCAL_LM_PRESETS,
+  type LocalLmDashboardState,
+} from "./local-lm-dashboard.ts";
+
+let defaultLocalLmState: LocalLmDashboardState = {
+  selectedPresetKey: "kkimi",
+  engine: LOCAL_LM_PRESETS.kkimi.engine,
+  baseUrl: LOCAL_LM_PRESETS.kkimi.defaultBaseUrl,
+  modelId: LOCAL_LM_PRESETS.kkimi.defaultModelId,
+  testing: false,
+  statusMessage: null,
+  statusKind: null,
+};
+import {
   renderActivationFeedback,
   renderConfiguredModel,
   renderConfiguredUtilityModel,
@@ -243,9 +258,15 @@ function renderAuthRow(props: ModelSetupViewProps, option: AuthOption) {
   `;
 }
 
+function isAlmOrLocalChoice(id: string, groupLabel?: string): boolean {
+  const norm = `${id} ${groupLabel ?? ""}`.toLowerCase();
+  return !norm.includes("openrouter");
+}
+
 function renderSignIn(props: ModelSetupViewProps, result: SystemAgentSetupDetectResult) {
   const options = (result.authOptions ?? [])
     .filter((option) => !props.embedded || !props.credentialChoices?.includes(option.id))
+    .filter((option) => isAlmOrLocalChoice(option.id, option.groupLabel))
     .toSorted((a, b) => a.label.localeCompare(b.label));
   if (options.length === 0) {
     return nothing;
@@ -480,6 +501,31 @@ function renderReady(props: ModelSetupViewProps, result: SystemAgentSetupDetectR
   }
   return html`
     ${current} ${renderNativeSessionDiscovery(props, result)} ${renderEmptyState(props, result)}
+    ${renderLocalLmDashboard(
+      defaultLocalLmState,
+      (patch, event) => {
+        defaultLocalLmState = { ...defaultLocalLmState, ...patch };
+        if (event?.target) {
+          const host = (event.target as HTMLElement).closest(".model-setup, openclaw-model-setup-page") as {
+            requestUpdate?: () => void;
+          };
+          host?.requestUpdate?.();
+        }
+      },
+      () => {
+        const fullModelRef = `${defaultLocalLmState.engine}/${defaultLocalLmState.modelId}`;
+        props.onActivateCandidate({
+          kind: `provider-auto:${defaultLocalLmState.engine}`,
+          brandId: defaultLocalLmState.engine,
+          label:
+            LOCAL_LM_PRESETS[defaultLocalLmState.selectedPresetKey]?.name ?? defaultLocalLmState.modelId,
+          detail: defaultLocalLmState.baseUrl,
+          modelRef: fullModelRef,
+          recommended: true,
+          credentials: true,
+        });
+      },
+    )}
     ${renderCandidateRows(props, result)} ${renderUnavailable(props, result)}
     ${renderPrepare(props, result)} ${renderSignIn(props, result)} ${renderManual(props, result)}
   `;

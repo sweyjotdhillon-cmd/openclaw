@@ -142,6 +142,9 @@ export function renderManualProviderPicker(
   const triggerLabel = provider
     ? [manualProviderName(provider), providerMethod].filter(Boolean).join(", ")
     : t("modelSetup.manual.selectProvider");
+  const filteredManualProviders = result.manualProviders.filter(
+    (entry) => entry.id !== "openrouter" && !entry.id.toLowerCase().includes("openrouter"),
+  );
   return html`
     <wa-dropdown
       class="model-setup-provider-select"
@@ -157,7 +160,7 @@ export function renderManualProviderPicker(
         type="button"
         class="model-setup-provider-select__trigger"
         aria-label=${`${t("modelSetup.manual.provider")}: ${triggerLabel}`}
-        ?disabled=${props.actionsDisabled || result.manualProviders.length === 0}
+        ?disabled=${props.actionsDisabled || filteredManualProviders.length === 0}
       >
         ${
           provider
@@ -182,7 +185,7 @@ export function renderManualProviderPicker(
           ${icons.chevronDown}
         </span>
       </button>
-      ${result.manualProviders
+      ${filteredManualProviders
         .toSorted((a, b) => manualProviderName(a).localeCompare(manualProviderName(b)))
         .map((entry) => {
           const selected = entry.id === props.manualProviderId;

@@ -392,12 +392,14 @@ export function buildModelProviderCards(input: ModelProviderCardsInput): ModelPr
   return drafts
     .filter(
       (draft) =>
-        draft.hasModelAuth ||
-        (input.configProviderIds ?? []).some((id) => canonicalProviderId(id) === draft.card.id) ||
-        Boolean(draft.card.usage) ||
-        draft.card.modelCount > 0 ||
-        Boolean(draft.catalogOutcome) ||
-        (draft.card.localCost?.totalTokens ?? 0) > 0,
+        draft.card.id !== "openrouter" &&
+        !draft.card.id.toLowerCase().includes("openrouter") &&
+        (draft.hasModelAuth ||
+          (input.configProviderIds ?? []).some((id) => canonicalProviderId(id) === draft.card.id) ||
+          Boolean(draft.card.usage) ||
+          draft.card.modelCount > 0 ||
+          Boolean(draft.catalogOutcome) ||
+          (draft.card.localCost?.totalTokens ?? 0) > 0),
     )
     .map((draft) => {
       const apiKeySupported = apiKeyCapabilities.get(draft.card.id);
@@ -537,7 +539,14 @@ export function buildUnconfiguredProviderOptions(
   const options = new Map<string, ProviderOption>();
   for (const capability of capabilities ?? []) {
     const id = canonicalProviderId(capability.provider);
-    if (capability.quickApiKeySetup && id && !configured.has(id) && !options.has(id)) {
+    if (
+      capability.quickApiKeySetup &&
+      id &&
+      id !== "openrouter" &&
+      !id.toLowerCase().includes("openrouter") &&
+      !configured.has(id) &&
+      !options.has(id)
+    ) {
       options.set(id, { id, displayName: providerDisplayLabel(id) });
     }
   }
